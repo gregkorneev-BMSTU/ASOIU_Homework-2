@@ -75,6 +75,34 @@ ORDER BY airline_id";
     }
 
     /// <summary>
+    /// Возвращает авиакомпанию по идентификатору.
+    /// </summary>
+    /// <param name="id">Идентификатор авиакомпании.</param>
+    /// <returns>Авиакомпания или null, если запись не найдена.</returns>
+    public Airline? GetAirlineById(int id)
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+SELECT airline_id, airline_name
+FROM airline
+WHERE airline_id = @id";
+        command.Parameters.AddWithValue("@id", id);
+
+        using var reader = command.ExecuteReader();
+        if (!reader.Read())
+        {
+            return null;
+        }
+
+        return new Airline(
+            reader.GetInt32(0),
+            reader.GetString(1));
+    }
+
+    /// <summary>
     /// Возвращает список всех рейсов.
     /// </summary>
     /// <returns>Список рейсов.</returns>

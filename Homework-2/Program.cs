@@ -3,7 +3,7 @@
 Console.OutputEncoding = Encoding.UTF8;
 Console.InputEncoding = Encoding.UTF8;
 
-string dbPath = "airlines.db";
+string dbPath = Path.Combine(AppContext.BaseDirectory, "airlines.db");
 string airlinesCsvPath = Path.Combine(AppContext.BaseDirectory, "airlines.csv");
 string flightsCsvPath = Path.Combine(AppContext.BaseDirectory, "flights.csv");
 
@@ -83,10 +83,13 @@ static void ShowFlights(DatabaseManager db)
 {
     Console.WriteLine("--- Все рейсы ---");
     List<Flight> flights = db.GetAllFlights();
+    Dictionary<int, string> airlineNames = db.GetAllAirlines()
+        .ToDictionary(airline => airline.Id, airline => airline.Name);
 
     foreach (Flight flight in flights)
     {
-        Console.WriteLine(flight);
+        string airlineName = airlineNames.GetValueOrDefault(flight.AirlineId, $"#{flight.AirlineId}");
+        Console.WriteLine($"[{flight.Id}] {flight.Name}, авиакомпания: {airlineName}, дальность: {flight.DistanceKm} км");
     }
 
     Console.WriteLine($"Итого: {flights.Count}");
@@ -102,6 +105,13 @@ static void AddFlight(DatabaseManager db)
     if (!int.TryParse(Console.ReadLine(), out int airlineId))
     {
         Console.WriteLine("Ошибка: введите целое число.");
+        return;
+    }
+
+    Airline? airline = db.GetAirlineById(airlineId);
+    if (airline == null)
+    {
+        Console.WriteLine($"Ошибка: авиакомпания с ID={airlineId} не найдена.");
         return;
     }
 
@@ -154,6 +164,12 @@ static void EditFlight(DatabaseManager db)
         if (!int.TryParse(input, out int newAirlineId))
         {
             Console.WriteLine("Ошибка: ID авиакомпании должен быть целым числом.");
+            return;
+        }
+
+        if (db.GetAirlineById(newAirlineId) == null)
+        {
+            Console.WriteLine($"Ошибка: авиакомпания с ID={newAirlineId} не найдена.");
             return;
         }
 
