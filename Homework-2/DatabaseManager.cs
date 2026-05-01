@@ -24,12 +24,12 @@ public class DatabaseManager
     /// <param name="flightsCsvPath">Путь к CSV-файлу рейсов.</param>
     public void InitializeDatabase(string airlinesCsvPath, string flightsCsvPath)
     {
-        if (GetAirlineCount() == 0 && File.Exists(airlinesCsvPath))
+        if (GetTableCount("airline") == 0 && File.Exists(airlinesCsvPath))
         {
             ImportAirlinesFromCsv(airlinesCsvPath);
         }
 
-        if (GetFlightCount() == 0 && File.Exists(flightsCsvPath))
+        if (GetTableCount("flight") == 0 && File.Exists(flightsCsvPath))
         {
             ImportFlightsFromCsv(flightsCsvPath);
         }
@@ -54,8 +54,7 @@ public class DatabaseManager
     {
         var result = new List<Airline>();
 
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
+        using var connection = OpenConnection();
 
         var command = connection.CreateCommand();
         command.CommandText = @"
@@ -81,8 +80,7 @@ ORDER BY airline_id";
     /// <returns>Авиакомпания или null, если запись не найдена.</returns>
     public Airline? GetAirlineById(int id)
     {
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
+        using var connection = OpenConnection();
 
         var command = connection.CreateCommand();
         command.CommandText = @"
@@ -110,8 +108,7 @@ WHERE airline_id = @id";
     {
         var result = new List<Flight>();
 
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
+        using var connection = OpenConnection();
 
         var command = connection.CreateCommand();
         command.CommandText = @"
@@ -139,8 +136,7 @@ ORDER BY flight_id";
     /// <returns>Рейс или null, если запись не найдена.</returns>
     public Flight? GetFlightById(int id)
     {
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
+        using var connection = OpenConnection();
 
         var command = connection.CreateCommand();
         command.CommandText = @"
@@ -168,8 +164,7 @@ WHERE flight_id = @id";
     /// <param name="flight">Добавляемый рейс.</param>
     public void AddFlight(Flight flight)
     {
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
+        using var connection = OpenConnection();
 
         var command = connection.CreateCommand();
         command.CommandText = @"
@@ -187,8 +182,7 @@ VALUES (@airlineId, @name, @distanceKm)";
     /// <param name="flight">Рейс с новыми значениями.</param>
     public void UpdateFlight(Flight flight)
     {
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
+        using var connection = OpenConnection();
 
         var command = connection.CreateCommand();
         command.CommandText = @"
@@ -210,8 +204,7 @@ WHERE flight_id = @id";
     /// <param name="id">Идентификатор рейса.</param>
     public void DeleteFlight(int id)
     {
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
+        using var connection = OpenConnection();
 
         var command = connection.CreateCommand();
         command.CommandText = "DELETE FROM flight WHERE flight_id = @id";
@@ -226,8 +219,7 @@ WHERE flight_id = @id";
     /// <returns>Имена колонок и строки результата.</returns>
     public (string[] Columns, List<string[]> Rows) ExecuteQuery(string sql)
     {
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
+        using var connection = OpenConnection();
 
         var command = connection.CreateCommand();
         command.CommandText = sql;
@@ -257,8 +249,7 @@ WHERE flight_id = @id";
 
     private void CreateTables()
     {
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
+        using var connection = OpenConnection();
 
         var command = connection.CreateCommand();
         command.CommandText = @"
@@ -277,20 +268,9 @@ CREATE TABLE IF NOT EXISTS flight(
         command.ExecuteNonQuery();
     }
 
-    private int GetAirlineCount()
-    {
-        return GetTableCount("airline");
-    }
-
-    private int GetFlightCount()
-    {
-        return GetTableCount("flight");
-    }
-
     private int GetTableCount(string tableName)
     {
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
+        using var connection = OpenConnection();
 
         var command = connection.CreateCommand();
         command.CommandText = $"SELECT COUNT(*) FROM {tableName}";
@@ -299,21 +279,11 @@ CREATE TABLE IF NOT EXISTS flight(
 
     private void ImportAirlinesFromCsv(string path)
     {
-        var lines = File.ReadAllLines(path);
+        using var connection = OpenConnection();
 
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
-
-        for (int i = 1; i < lines.Length; i++)
+        foreach (string[] fields in ReadCsvRows(path, 2))
         {
-            string line = lines[i].Trim();
-            if (line.Length == 0)
-            {
-                continue;
-            }
-
-            string[] fields = line.Split(';');
-            if (fields.Length < 2 || !int.TryParse(fields[0], out int id))
+            if (!int.TryParse(fields[0], out int id))
             {
                 continue;
             }
@@ -330,22 +300,11 @@ VALUES (@id, @name)";
 
     private void ImportFlightsFromCsv(string path)
     {
-        var lines = File.ReadAllLines(path);
+        using var connection = OpenConnection();
 
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
-
-        for (int i = 1; i < lines.Length; i++)
+        foreach (string[] fields in ReadCsvRows(path, 4))
         {
-            string line = lines[i].Trim();
-            if (line.Length == 0)
-            {
-                continue;
-            }
-
-            string[] fields = line.Split(';');
-            if (fields.Length < 4 ||
-                !int.TryParse(fields[0], out int id) ||
+            if (!int.TryParse(fields[0], out int id) ||
                 !int.TryParse(fields[1], out int airlineId) ||
                 !int.TryParse(fields[3], out int distanceKm))
             {
@@ -362,6 +321,31 @@ VALUES (@id, @airlineId, @name, @distanceKm)";
             command.Parameters.AddWithValue("@name", flight.Name);
             command.Parameters.AddWithValue("@distanceKm", flight.DistanceKm);
             command.ExecuteNonQuery();
+        }
+    }
+
+    private SqliteConnection OpenConnection()
+    {
+        var connection = new SqliteConnection(_connectionString);
+        connection.Open();
+        return connection;
+    }
+
+    private static IEnumerable<string[]> ReadCsvRows(string path, int minFieldCount)
+    {
+        foreach (string line in File.ReadLines(path).Skip(1))
+        {
+            string trimmedLine = line.Trim();
+            if (trimmedLine.Length == 0)
+            {
+                continue;
+            }
+
+            string[] fields = trimmedLine.Split(';');
+            if (fields.Length >= minFieldCount)
+            {
+                yield return fields;
+            }
         }
     }
 }

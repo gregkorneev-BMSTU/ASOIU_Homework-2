@@ -50,7 +50,6 @@ do
                 ReportsMenu(db);
                 break;
             case "0":
-                Console.WriteLine("До свидания!");
                 break;
             default:
                 Console.WriteLine("Неверный пункт меню.");
@@ -98,39 +97,25 @@ static void ShowFlights(DatabaseManager db)
 static void AddFlight(DatabaseManager db)
 {
     Console.WriteLine("--- Добавление рейса ---");
-    Console.WriteLine("Доступные авиакомпании:");
-    ShowAirlines(db);
-
-    Console.Write("ID авиакомпании: ");
-    if (!int.TryParse(Console.ReadLine(), out int airlineId))
+    int? airlineId = ReadAirlineId(db, "ID авиакомпании: ", null);
+    if (airlineId == null)
     {
-        Console.WriteLine("Ошибка: введите целое число.");
         return;
     }
 
-    Airline? airline = db.GetAirlineById(airlineId);
-    if (airline == null)
+    string? name = ReadRequiredString("Название рейса: ", "Ошибка: название рейса не может быть пустым.");
+    if (name == null)
     {
-        Console.WriteLine($"Ошибка: авиакомпания с ID={airlineId} не найдена.");
         return;
     }
 
-    Console.Write("Название рейса: ");
-    string name = Console.ReadLine()?.Trim() ?? "";
-    if (name.Length == 0)
+    int? distanceKm = ReadInt("Дальность маршрута, км: ", "Ошибка: введите целое число.");
+    if (distanceKm == null)
     {
-        Console.WriteLine("Ошибка: название рейса не может быть пустым.");
         return;
     }
 
-    Console.Write("Дальность маршрута, км: ");
-    if (!int.TryParse(Console.ReadLine(), out int distanceKm))
-    {
-        Console.WriteLine("Ошибка: введите целое число.");
-        return;
-    }
-
-    var flight = new Flight(0, airlineId, name, distanceKm);
+    var flight = new Flight(0, airlineId.Value, name, distanceKm.Value);
     db.AddFlight(flight);
     Console.WriteLine("Рейс добавлен.");
 }
@@ -154,47 +139,31 @@ static void EditFlight(DatabaseManager db)
 
     Console.WriteLine($"Текущие данные: {flight}");
     Console.WriteLine("Нажмите Enter без ввода, чтобы оставить старое значение.");
-    Console.WriteLine("Доступные авиакомпании:");
-    ShowAirlines(db);
 
-    Console.Write($"ID авиакомпании [{flight.AirlineId}]: ");
-    string input = Console.ReadLine()?.Trim() ?? "";
-    if (input.Length > 0)
+    int? airlineId = ReadAirlineId(db, $"ID авиакомпании [{flight.AirlineId}]: ", flight.AirlineId);
+    if (airlineId == null)
     {
-        if (!int.TryParse(input, out int newAirlineId))
-        {
-            Console.WriteLine("Ошибка: ID авиакомпании должен быть целым числом.");
-            return;
-        }
-
-        if (db.GetAirlineById(newAirlineId) == null)
-        {
-            Console.WriteLine($"Ошибка: авиакомпания с ID={newAirlineId} не найдена.");
-            return;
-        }
-
-        flight.AirlineId = newAirlineId;
+        return;
     }
 
-    Console.Write($"Название рейса [{flight.Name}]: ");
-    input = Console.ReadLine()?.Trim() ?? "";
-    if (input.Length > 0)
+    string? name = ReadOptionalString($"Название рейса [{flight.Name}]: ", flight.Name);
+    if (name == null)
     {
-        flight.Name = input;
+        return;
     }
 
-    Console.Write($"Дальность маршрута, км [{flight.DistanceKm}]: ");
-    input = Console.ReadLine()?.Trim() ?? "";
-    if (input.Length > 0)
+    int? distanceKm = ReadOptionalInt(
+        $"Дальность маршрута, км [{flight.DistanceKm}]: ",
+        flight.DistanceKm,
+        "Ошибка: дальность должна быть целым числом.");
+    if (distanceKm == null)
     {
-        if (!int.TryParse(input, out int newDistanceKm))
-        {
-            Console.WriteLine("Ошибка: дальность должна быть целым числом.");
-            return;
-        }
-
-        flight.DistanceKm = newDistanceKm;
+        return;
     }
+
+    flight.AirlineId = airlineId.Value;
+    flight.Name = name;
+    flight.DistanceKm = distanceKm.Value;
 
     db.UpdateFlight(flight);
     Console.WriteLine("Рейс обновлён.");
@@ -308,4 +277,86 @@ ORDER BY avg_distance_km DESC")
         .Header("Авиакомпания", "Средняя дальность, км")
         .ColumnWidths(24, 24)
         .Print();
+}
+
+static int? ReadInt(string prompt, string errorMessage)
+{
+    Console.Write(prompt);
+    if (!int.TryParse(Console.ReadLine(), out int value))
+    {
+        Console.WriteLine(errorMessage);
+        return null;
+    }
+
+    return value;
+}
+
+static int? ReadOptionalInt(string prompt, int currentValue, string errorMessage)
+{
+    Console.Write(prompt);
+    string input = Console.ReadLine()?.Trim() ?? "";
+    if (input.Length == 0)
+    {
+        return currentValue;
+    }
+
+    if (!int.TryParse(input, out int value))
+    {
+        Console.WriteLine(errorMessage);
+        return null;
+    }
+
+    return value;
+}
+
+static string? ReadRequiredString(string prompt, string errorMessage)
+{
+    Console.Write(prompt);
+    string value = Console.ReadLine()?.Trim() ?? "";
+    if (value.Length == 0)
+    {
+        Console.WriteLine(errorMessage);
+        return null;
+    }
+
+    return value;
+}
+
+static string? ReadOptionalString(string prompt, string currentValue)
+{
+    Console.Write(prompt);
+    string value = Console.ReadLine()?.Trim() ?? "";
+    return value.Length == 0 ? currentValue : value;
+}
+
+static int? ReadAirlineId(DatabaseManager db, string prompt, int? currentValue)
+{
+    Console.WriteLine("Доступные авиакомпании:");
+    ShowAirlines(db);
+
+    Console.Write(prompt);
+    string input = Console.ReadLine()?.Trim() ?? "";
+    if (input.Length == 0)
+    {
+        if (currentValue == null)
+        {
+            Console.WriteLine("Ошибка: ID авиакомпании должен быть целым числом.");
+        }
+
+        return currentValue;
+    }
+
+    if (!int.TryParse(input, out int airlineId))
+    {
+        Console.WriteLine("Ошибка: ID авиакомпании должен быть целым числом.");
+        return null;
+    }
+
+    if (db.GetAirlineById(airlineId) == null)
+    {
+        Console.WriteLine($"Ошибка: авиакомпания с ID={airlineId} не найдена.");
+        return null;
+    }
+
+    return airlineId;
 }
