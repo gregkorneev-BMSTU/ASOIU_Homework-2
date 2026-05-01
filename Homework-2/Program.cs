@@ -22,6 +22,7 @@ do
     Console.WriteLine("4 - Редактировать рейс");
     Console.WriteLine("5 - Удалить рейс");
     Console.WriteLine("6 - Отчёты");
+    Console.WriteLine("7 - Фильтр по авиакомпании");
     Console.WriteLine("0 - Выход");
     Console.Write("Ваш выбор: ");
     choice = Console.ReadLine()?.Trim() ?? "";
@@ -48,6 +49,9 @@ do
                 break;
             case "6":
                 ReportsMenu(db);
+                break;
+            case "7":
+                FilterByAirline(db);
                 break;
             case "0":
                 break;
@@ -82,13 +86,39 @@ static void ShowFlights(DatabaseManager db)
 {
     Console.WriteLine("--- Все рейсы ---");
     List<Flight> flights = db.GetAllFlights();
-    Dictionary<int, string> airlineNames = db.GetAllAirlines()
-        .ToDictionary(airline => airline.Id, airline => airline.Name);
+    List<Airline> airlines = db.GetAllAirlines();
 
     foreach (Flight flight in flights)
     {
-        string airlineName = airlineNames.GetValueOrDefault(flight.AirlineId, $"#{flight.AirlineId}");
+        string airlineName = GetAirlineName(airlines, flight.AirlineId);
         Console.WriteLine($"[{flight.Id}] {flight.Name}, авиакомпания: {airlineName}, дальность: {flight.DistanceKm} км");
+    }
+
+    Console.WriteLine($"Итого: {flights.Count}");
+}
+
+static void FilterByAirline(DatabaseManager db)
+{
+    Console.WriteLine("--- Фильтр по авиакомпании ---");
+    int? airlineId = ReadAirlineId(db, "ID авиакомпании: ", null);
+    if (airlineId == null)
+    {
+        return;
+    }
+
+    Airline? airline = db.GetAirlineById(airlineId.Value);
+    List<Flight> flights = db.GetFlightsByAirline(airlineId.Value);
+
+    if (flights.Count == 0)
+    {
+        Console.WriteLine("Для выбранной авиакомпании рейсы не найдены.");
+        return;
+    }
+
+    Console.WriteLine($"Рейсы авиакомпании: {airline?.Name}");
+    foreach (Flight flight in flights)
+    {
+        Console.WriteLine($"[{flight.Id}] {flight.Name}, дальность: {flight.DistanceKm} км");
     }
 
     Console.WriteLine($"Итого: {flights.Count}");
@@ -359,4 +389,17 @@ static int? ReadAirlineId(DatabaseManager db, string prompt, int? currentValue)
     }
 
     return airlineId;
+}
+
+static string GetAirlineName(List<Airline> airlines, int airlineId)
+{
+    foreach (Airline airline in airlines)
+    {
+        if (airline.Id == airlineId)
+        {
+            return airline.Name;
+        }
+    }
+
+    return $"#{airlineId}";
 }

@@ -159,6 +159,38 @@ WHERE flight_id = @id";
     }
 
     /// <summary>
+    /// Возвращает список рейсов выбранной авиакомпании.
+    /// </summary>
+    /// <param name="airlineId">Идентификатор авиакомпании.</param>
+    /// <returns>Список рейсов авиакомпании.</returns>
+    public List<Flight> GetFlightsByAirline(int airlineId)
+    {
+        var result = new List<Flight>();
+
+        using var connection = OpenConnection();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+SELECT flight_id, airline_id, flight_name, distance_km
+FROM flight
+WHERE airline_id = @airlineId
+ORDER BY flight_name";
+        command.Parameters.AddWithValue("@airlineId", airlineId);
+
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            result.Add(new Flight(
+                reader.GetInt32(0),
+                reader.GetInt32(1),
+                reader.GetString(2),
+                reader.GetInt32(3)));
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Добавляет рейс.
     /// </summary>
     /// <param name="flight">Добавляемый рейс.</param>
@@ -331,10 +363,19 @@ VALUES (@id, @airlineId, @name, @distanceKm)";
         return connection;
     }
 
-    private static IEnumerable<string[]> ReadCsvRows(string path, int minFieldCount)
+    private static List<string[]> ReadCsvRows(string path, int minFieldCount)
     {
-        foreach (string line in File.ReadLines(path).Skip(1))
+        var rows = new List<string[]>();
+        bool isFirstLine = true;
+
+        foreach (string line in File.ReadLines(path))
         {
+            if (isFirstLine)
+            {
+                isFirstLine = false;
+                continue;
+            }
+
             string trimmedLine = line.Trim();
             if (trimmedLine.Length == 0)
             {
@@ -344,8 +385,10 @@ VALUES (@id, @airlineId, @name, @distanceKm)";
             string[] fields = trimmedLine.Split(';');
             if (fields.Length >= minFieldCount)
             {
-                yield return fields;
+                rows.Add(fields);
             }
         }
+
+        return rows;
     }
 }
