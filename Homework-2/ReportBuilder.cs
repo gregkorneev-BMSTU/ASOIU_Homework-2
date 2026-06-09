@@ -1,8 +1,5 @@
 using System.Text;
 
-/// <summary>
-/// Построитель отчётов с применением паттерна Fluent Interface.
-/// </summary>
 public class ReportBuilder
 {
     private readonly DatabaseManager _db;
@@ -11,63 +8,35 @@ public class ReportBuilder
     private string[] _headers = Array.Empty<string>();
     private int[] _widths = Array.Empty<int>();
 
-    /// <summary>
-    /// Создаёт построитель отчётов.
-    /// </summary>
-    /// <param name="db">Менеджер базы данных для выполнения SQL-запросов.</param>
     public ReportBuilder(DatabaseManager db)
     {
         _db = db;
     }
 
-    /// <summary>
-    /// Задаёт SQL-запрос отчёта.
-    /// </summary>
-    /// <param name="sql">SQL-запрос.</param>
-    /// <returns>Текущий объект ReportBuilder.</returns>
     public ReportBuilder Query(string sql)
     {
         _sql = sql;
         return this;
     }
 
-    /// <summary>
-    /// Задаёт заголовок отчёта.
-    /// </summary>
-    /// <param name="text">Текст заголовка.</param>
-    /// <returns>Текущий объект ReportBuilder.</returns>
     public ReportBuilder Title(string text)
     {
         _title = text;
         return this;
     }
 
-    /// <summary>
-    /// Задаёт заголовки колонок отчёта.
-    /// </summary>
-    /// <param name="columns">Названия колонок.</param>
-    /// <returns>Текущий объект ReportBuilder.</returns>
     public ReportBuilder Header(params string[] columns)
     {
         _headers = columns;
         return this;
     }
 
-    /// <summary>
-    /// Задаёт ширину колонок отчёта.
-    /// </summary>
-    /// <param name="widths">Ширины колонок в символах.</param>
-    /// <returns>Текущий объект ReportBuilder.</returns>
     public ReportBuilder ColumnWidths(params int[] widths)
     {
         _widths = widths;
         return this;
     }
 
-    /// <summary>
-    /// Формирует отчёт в виде строки.
-    /// </summary>
-    /// <returns>Готовый текст отчёта.</returns>
     public string Build()
     {
         var (columns, rows) = _db.ExecuteQuery(_sql);
@@ -112,9 +81,6 @@ public class ReportBuilder
         return sb.ToString();
     }
 
-    /// <summary>
-    /// Формирует отчёт и выводит его в консоль.
-    /// </summary>
     public void Print()
     {
         Console.Write(Build());

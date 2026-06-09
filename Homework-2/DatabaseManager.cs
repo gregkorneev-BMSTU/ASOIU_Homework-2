@@ -1,27 +1,15 @@
 using Microsoft.Data.Sqlite;
 
-/// <summary>
-/// Инкапсулирует работу приложения с базой данных SQLite.
-/// </summary>
 public class DatabaseManager
 {
     private readonly string _connectionString;
 
-    /// <summary>
-    /// Создаёт менеджер базы данных и таблицы, если они ещё не существуют.
-    /// </summary>
-    /// <param name="databasePath">Путь к файлу базы данных.</param>
     public DatabaseManager(string databasePath)
     {
         _connectionString = $"Data Source={databasePath};Foreign Keys=True";
         CreateTables();
     }
 
-    /// <summary>
-    /// Импортирует данные из CSV-файлов, если таблицы базы данных пустые.
-    /// </summary>
-    /// <param name="airlinesCsvPath">Путь к CSV-файлу авиакомпаний.</param>
-    /// <param name="flightsCsvPath">Путь к CSV-файлу рейсов.</param>
     public void InitializeDatabase(string airlinesCsvPath, string flightsCsvPath)
     {
         if (GetTableCount("airline") == 0 && File.Exists(airlinesCsvPath))
@@ -35,21 +23,12 @@ public class DatabaseManager
         }
     }
 
-    /// <summary>
-    /// Импортирует авиакомпании и рейсы из CSV-файлов.
-    /// </summary>
-    /// <param name="airlinesCsvPath">Путь к CSV-файлу авиакомпаний.</param>
-    /// <param name="flightsCsvPath">Путь к CSV-файлу рейсов.</param>
     public void ImportFromCsv(string airlinesCsvPath, string flightsCsvPath)
     {
         ImportAirlinesFromCsv(airlinesCsvPath);
         ImportFlightsFromCsv(flightsCsvPath);
     }
 
-    /// <summary>
-    /// Возвращает список всех авиакомпаний.
-    /// </summary>
-    /// <returns>Список авиакомпаний.</returns>
     public List<Airline> GetAllAirlines()
     {
         var result = new List<Airline>();
@@ -73,11 +52,6 @@ ORDER BY airline_id";
         return result;
     }
 
-    /// <summary>
-    /// Возвращает авиакомпанию по идентификатору.
-    /// </summary>
-    /// <param name="id">Идентификатор авиакомпании.</param>
-    /// <returns>Авиакомпания или null, если запись не найдена.</returns>
     public Airline? GetAirlineById(int id)
     {
         using var connection = OpenConnection();
@@ -100,10 +74,6 @@ WHERE airline_id = @id";
             reader.GetString(1));
     }
 
-    /// <summary>
-    /// Возвращает список всех рейсов.
-    /// </summary>
-    /// <returns>Список рейсов.</returns>
     public List<Flight> GetAllFlights()
     {
         var result = new List<Flight>();
@@ -129,11 +99,6 @@ ORDER BY flight_id";
         return result;
     }
 
-    /// <summary>
-    /// Возвращает рейс по идентификатору.
-    /// </summary>
-    /// <param name="id">Идентификатор рейса.</param>
-    /// <returns>Рейс или null, если запись не найдена.</returns>
     public Flight? GetFlightById(int id)
     {
         using var connection = OpenConnection();
@@ -158,11 +123,6 @@ WHERE flight_id = @id";
             reader.GetInt32(3));
     }
 
-    /// <summary>
-    /// Возвращает список рейсов выбранной авиакомпании.
-    /// </summary>
-    /// <param name="airlineId">Идентификатор авиакомпании.</param>
-    /// <returns>Список рейсов авиакомпании.</returns>
     public List<Flight> GetFlightsByAirline(int airlineId)
     {
         var result = new List<Flight>();
@@ -190,10 +150,6 @@ ORDER BY flight_name";
         return result;
     }
 
-    /// <summary>
-    /// Добавляет рейс.
-    /// </summary>
-    /// <param name="flight">Добавляемый рейс.</param>
     public void AddFlight(Flight flight)
     {
         using var connection = OpenConnection();
@@ -208,10 +164,6 @@ VALUES (@airlineId, @name, @distanceKm)";
         command.ExecuteNonQuery();
     }
 
-    /// <summary>
-    /// Обновляет рейс по идентификатору.
-    /// </summary>
-    /// <param name="flight">Рейс с новыми значениями.</param>
     public void UpdateFlight(Flight flight)
     {
         using var connection = OpenConnection();
@@ -230,10 +182,6 @@ WHERE flight_id = @id";
         command.ExecuteNonQuery();
     }
 
-    /// <summary>
-    /// Удаляет рейс по идентификатору.
-    /// </summary>
-    /// <param name="id">Идентификатор рейса.</param>
     public void DeleteFlight(int id)
     {
         using var connection = OpenConnection();
@@ -244,11 +192,6 @@ WHERE flight_id = @id";
         command.ExecuteNonQuery();
     }
 
-    /// <summary>
-    /// Выполняет SQL-запрос для отчётов и возвращает табличный результат.
-    /// </summary>
-    /// <param name="sql">SQL-запрос.</param>
-    /// <returns>Имена колонок и строки результата.</returns>
     public (string[] Columns, List<string[]> Rows) ExecuteQuery(string sql)
     {
         using var connection = OpenConnection();
